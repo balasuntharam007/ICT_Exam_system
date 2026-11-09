@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade 6 ICT Online Exam Portal | 6 ஆம் தர ICT ஆன்லைன் தேர்வுத் தளம்</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Madurai:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom stylesheet -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Firebase Compat SDKs (v10) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <!-- SheetJS for Authentic Excel (.xlsx) Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Firebase Configuration & Secure Data Service -->
+    <script src="firebase-config.js"></script>
+
+    <!-- 240 MCQ Question Bank -->
+    <script src="questions.js"></script>
+</head>
+<body>
+
+    <!-- Header & Navigation -->
+    <header class="site-header">
+        <div class="container">
+            <div class="header-inner">
+                <!-- Logo & Title -->
+                <div class="brand" onclick="goToHome()" style="cursor: pointer;" title="முகப்பிற்குச் செல்">
+                    <div class="brand-icon">
+                        <i class="fa-solid fa-laptop-code"></i>
+                    </div>
+                    <div>
+                        <h1 class="brand-title">Grade 6 ICT Exam Portal</h1>
+                        <p class="brand-sub">6 ஆம் தர தகவல் மற்றும் தொடர்பாடல் தொழில்நுட்பம்</p>
+                    </div>
+                </div>
+
+                <!-- Live Timer & Stats (Shown during active exam) -->
+                <div id="header-stats" class="header-stats hidden">
+                    <div class="timer-box">
+                        <i class="fa-regular fa-clock"></i>
+                        <span id="timer-display" class="timer-display">00:00</span>
+                    </div>
+                    <span id="header-mode-badge" class="mode-badge">பயிற்சி முறை</span>
+                </div>
+
+                <!-- User Session & Cloud Status Actions -->
+                <div id="header-user-actions" class="header-actions">
+                    <!-- Cloud Status Indicator -->
+                    <div id="header-cloud-pill" class="cloud-status-pill is-local" title="கிளவுட் சேமிப்பக நிலை">
+                        <i class="fa-solid fa-cloud"></i>
+                        <span id="header-cloud-text">Local Mode</span>
+                    </div>
+
+                    <!-- User Pill (Student or Admin) -->
+                    <div id="header-user-pill" class="user-badge hidden">
+                        <i id="header-user-icon" class="fa-solid fa-user-graduate"></i>
+                        <span id="header-user-name">std001</span>
+                    </div>
+
+                    <!-- Admin Portal Nav Button (Visible for Admin) -->
+                    <button id="btn-header-admin-nav" onclick="showAdminView()" class="btn-header btn-header-admin hidden" title="நிர்வாக பலகைக்குச் செல்">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>Admin</span>
+                    </button>
+
+                    <!-- Student Lobby Nav Button (for Admin to preview/take test) -->
+                    <button id="btn-header-exam-nav" onclick="showLobbyView()" class="btn-header btn-header-admin hidden" style="background: var(--brand-600);" title="தேர்வு முகப்பிற்குச் செல்">
+                        <i class="fa-solid fa-pen-nib"></i>
+                        <span>Exams</span>
+                    </button>
+
+                    <!-- Logout Button -->
+                    <button id="btn-header-logout" onclick="logoutUser()" class="btn-header btn-header-logout hidden" title="கணக்கிலிருந்து வெளியேறு">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>வெளியேறு</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main container">
+
+        <!-- ========================================== -->
+        <!-- View 0: Authentication Portal (Login)      -->
+        <!-- ========================================== -->
+        <div id="auth-view" class="view">
+            <div class="auth-wrapper">
+                <div class="auth-card">
+                    <div class="auth-header">
+                        <div class="auth-header-icon">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <h2 class="auth-title">ICT தேர்வுத் தளம் – உள்நுழைவு</h2>
+                        <p class="auth-sub">இலங்கை 6 ஆம் தர தகவல் மற்றும் தொடர்பாடல் தொழில்நுட்பம்</p>
+                    </div>
+
+                    <!-- Role Tabs -->
+                    <div class="auth-tabs">
+                        <button type="button" id="tab-login-student" onclick="switchLoginTab('student')" class="auth-tab-btn is-active">
+                            <i class="fa-solid fa-user-graduate"></i>
+                            <span>மாணவர் உள்நுழைவு</span>
+                        </button>
+                        <button type="button" id="tab-login-admin" onclick="switchLoginTab('admin')" class="auth-tab-btn">
+                            <i class="fa-solid fa-user-tie"></i>
+                            <span>நிர்வாகி உள்நுழைவு</span>
+                        </button>
+                    </div>
+
+                    <div class="auth-body">
+                        <!-- Alert Box -->
+                        <div id="login-alert" class="auth-alert is-error hidden">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span id="login-alert-text">தவறான பயனர் பெயர் அல்லது கடவுச்சொல்.</span>
+                        </div>
+
+                        <!-- Student Login Form -->
+                        <form id="form-student-login" onsubmit="handleStudentLogin(event)">
+                            <div class="form-group">
+                                <label class="form-label" for="login-student-user">மாணவர் பயனர் பெயர் (Username / Student ID)</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-regular fa-id-badge"></i>
+                                    <input type="text" id="login-student-user" class="form-control" placeholder="எ.கா: std001 அல்லது std025" required autocomplete="username">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label class="form-label" for="login-student-pass">கடவுச்சொல் (Password)</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-solid fa-lock"></i>
+                                    <input type="password" id="login-student-pass" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+                                </div>
+                            </div>
+
+                            <button type="submit" id="btn-student-submit" class="btn btn-primary btn-large" style="width: 100%; margin-top: 1.25rem;">
+                                <span>உள்நுழைக (Student Login)</span>
+                                <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                            </button>
+
+                            <!-- Quick test helper chips -->
+                            <div class="demo-chips">
+                                <div class="demo-chips-title">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                    <span>பரிசோதனை கணக்குகள் (Quick Test Fill):</span>
+                                </div>
+                                <div class="chip-group">
+                                    <button type="button" onclick="quickFillStudent('std001', 'ict@std001')" class="demo-chip">std001 (மாணவர் 01)</button>
+                                    <button type="button" onclick="quickFillStudent('std002', 'ict@std002')" class="demo-chip">std002 (மாணவர் 02)</button>
+                                    <button type="button" onclick="quickFillStudent('std010', 'ict@std010')" class="demo-chip">std010 (மாணவர் 10)</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Admin Login Form -->
+                        <form id="form-admin-login" onsubmit="handleAdminLogin(event)" class="hidden">
+                            <div class="form-group">
+                                <label class="form-label" for="login-admin-user">நிர்வாகி மின்னஞ்சல் / பயனர் பெயர் (Admin Email/ID)</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-solid fa-envelope"></i>
+                                    <input type="text" id="login-admin-user" class="form-control" placeholder="admin@ictg6.school அல்லது admin" required autocomplete="username">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label class="form-label" for="login-admin-pass">நிர்வாகி கடவுச்சொல் (Admin Password)</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-solid fa-key"></i>
+                                    <input type="password" id="login-admin-pass" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+                                </div>
+                            </div>
+
+                            <button type="submit" id="btn-admin-submit" class="btn btn-primary btn-large" style="width: 100%; margin-top: 1.25rem; background: var(--slate-900);">
+                                <span>நிர்வாகியாக உள்நுழைக</span>
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </button>
+
+                            <!-- Admin Quick Autofill -->
+                            <div class="demo-chips">
+                                <div class="demo-chips-title">
+                                    <i class="fa-solid fa-key"></i>
+                                    <span>நிர்வாகி மாதிரி கணக்கு (Default Admin):</span>
+                                </div>
+                                <div class="chip-group">
+                                    <button type="button" onclick="quickFillAdmin('admin@ictg6.school', 'Admin@2026')" class="demo-chip">admin@ictg6.school (Admin@2026)</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- View 1: Exam Setup Lobby                  -->
+        <!-- ========================================== -->
+        <div id="lobby-view" class="view hidden">
+            <!-- Hero Banner -->
+            <div class="hero">
+                <div class="hero-body">
+                    <span class="hero-tag" id="lobby-welcome-tag">240 MCQ வினா வங்கி</span>
+                    <h2 class="hero-title" id="lobby-welcome-title">தயாராகுங்கள், பயிற்சி செய்யுங்கள், தேர்ச்சியடையுங்கள்!</h2>
+                    <p class="hero-text">6 ஆம் தர பாடநூலின் அனைத்து 6 அலகுகளிலிருந்தும் தொகுக்கப்பட்ட வினா வங்கி. நீங்கள் எடுக்கும் மதிப்பெண்கள் தானாகவே கிளவுட் சேமிப்பகத்தில் பதிவாகும்.</p>
+                </div>
+                <i class="fa-solid fa-graduation-cap hero-icon"></i>
+            </div>
+
+            <!-- Configuration Cards -->
+            <div class="config-grid">
+                <!-- Unit Selector Card -->
+                <div class="card unit-panel">
+                    <h3 class="card-title">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span>அலகைத் தேர்ந்தெடுக்கவும் (Select Unit)</span>
+                    </h3>
+                    <div class="unit-grid" id="unit-selector-container">
+                        <!-- Unit choices injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- Mode & Settings Card -->
+                <div class="card settings-panel">
+                    <div class="settings-fields">
+                        <h3 class="card-title">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>தேர்வு முறை &amp; அமைப்புகள்</span>
+                        </h3>
+
+                        <!-- Mode Selection -->
+                        <div class="field">
+                            <label class="field-label">தேர்வு முறை</label>
+                            <div class="mode-switch">
+                                <button type="button" id="btn-mode-practice" onclick="setMode('practice')" class="mode-btn is-active">
+                                    <i class="fa-solid fa-lightbulb"></i> பயிற்சி
+                                </button>
+                                <button type="button" id="btn-mode-exam" onclick="setMode('exam')" class="mode-btn">
+                                    <i class="fa-solid fa-stopwatch"></i> நேரத் தேர்வு
+                                </button>
+                            </div>
+                            <p id="mode-desc" class="mode-desc">
+                                பயிற்சி முறை: ஒவ்வொரு விடையின் போதும் உடனடி விடை சரிபார்ப்பு.
+                            </p>
+                        </div>
+
+                        <!-- Question Limit -->
+                        <div class="field">
+                            <label class="field-label" for="question-count-select">வினாக்களின் எண்ணிக்கை</label>
+                            <select id="question-count-select" class="select">
+                                <option value="10">10 வினாக்கள் (Quick Test)</option>
+                                <option value="20">20 வினாக்கள்</option>
+                                <option value="40" selected>40 வினாக்கள் (Full Unit)</option>
+                                <option value="all">அனைத்து வினாக்களும்</option>
+                            </select>
+                        </div>
+
+                        <!-- Timer Option -->
+                        <div class="timer-row">
+                            <div>
+                                <span class="timer-row-title">நேரக் கணிப்பான் (Timer)</span>
+                                <span class="timer-row-sub">1 நிமிடம் / வினா</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="timer-toggle" checked>
+                                <span class="switch-track"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Start Button -->
+                    <button onclick="startQuiz()" class="btn btn-primary btn-large">
+                        <span>தேர்வைத் தொடங்கு</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- View 2: Active Exam Interface              -->
+        <!-- ========================================== -->
+        <div id="exam-view" class="view hidden">
+            <!-- Top Progress & Meta Bar -->
+            <div class="card exam-topbar">
+                <div class="q-meta">
+                    <span class="q-count">
+                        வினா <strong id="current-q-num">1</strong> / <span id="total-q-num">40</span>
+                    </span>
+                    <span id="active-unit-badge" class="unit-badge">அலகு 1</span>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress-wrap">
+                    <div class="progress">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                </div>
+
+                <div class="topbar-actions">
+                    <button onclick="toggleBookmarkCurrent()" id="btn-bookmark" class="icon-btn" title="வினாவை நினைவில் கொள்ள குறிக்கவும்">
+                        <i class="fa-regular fa-bookmark"></i>
+                    </button>
+                    <button onclick="quitExam()" class="btn-quit">வெளியேறு</button>
+                </div>
+            </div>
+
+            <!-- Question Card & Palette Grid -->
+            <div class="exam-grid">
+                <!-- Main Question Area -->
+                <div class="card question-card">
+                    <div class="q-body">
+                        <div class="q-head">
+                            <span class="q-badge">Q<span id="q-badge-num">1</span></span>
+                            <h3 id="question-text" class="q-text">
+                                கணினியின் அடிப்படைச் செயற்பாடுகளின் சரியான வரிசை எது?
+                            </h3>
+                        </div>
+
+                        <!-- Options List -->
+                        <div id="options-container" class="options">
+                            <!-- Option cards dynamically inserted -->
+                        </div>
+                    </div>
+
+                    <!-- Instant Feedback Banner (practice mode only) -->
+                    <div id="feedback-box" class="feedback hidden">
+                        <div class="feedback-title" id="feedback-title"></div>
+                        <p id="feedback-desc" class="feedback-desc"></p>
+                    </div>
+
+                    <!-- Navigation Control Buttons -->
+                    <div class="nav-row">
+                        <button id="btn-prev-q" onclick="navigateQuestion(-1)" class="btn btn-secondary">
+                            <i class="fa-solid fa-chevron-left"></i>
+                            <span>முந்தையது</span>
+                        </button>
+
+                        <div class="nav-actions">
+                            <button id="btn-next-q" onclick="navigateQuestion(1)" class="btn btn-primary">
+                                <span>அடுத்தது</span>
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                            <button id="btn-submit-exam" onclick="confirmSubmitExam()" class="btn btn-success hidden">
+                                <span>தேர்வை முடி</span>
+                                <i class="fa-solid fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question Palette Navigator Sidebar -->
+                <aside class="card palette-card">
+                    <h4 class="palette-head">
+                        <span>வினா பலகை (Palette)</span>
+                        <span id="answered-count-badge" class="count">0/40</span>
+                    </h4>
+
+                    <div id="palette-grid" class="palette-grid custom-scrollbar">
+                        <!-- Dynamic Palette Buttons -->
+                    </div>
+
+                    <div class="legend">
+                        <div class="legend-item"><span class="dot dot-answered"></span><span>விடையளிக்கப்பட்டவை</span></div>
+                        <div class="legend-item"><span class="dot dot-unseen"></span><span>பார்க்கப்படாதவை</span></div>
+                        <div class="legend-item"><span class="dot dot-bookmarked"></span><span>குறிக்கப்பட்டவை (Bookmarked)</span></div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- View 3: Results & Analytics Dashboard      -->
+        <!-- ========================================== -->
+        <div id="results-view" class="view hidden">
+            <!-- Cloud Auto-Save Banner -->
+            <div id="cloud-save-banner" class="cloud-save-banner">
+                <div class="cloud-save-left">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <div>
+                        <span>முடிவுகள் தானாகவே கிளவுட் சேமிப்பகத்தில் சேமிக்கப்பட்டன! (Results automatically saved to Cloud Firestore)</span>
+                        <div id="cloud-save-meta" style="font-size: 0.75rem; font-weight: normal; color: var(--green-700);">மாணவர் ID: std001 | நேரம்: இப்போது</div>
+                    </div>
+                </div>
+                <span class="status-pill is-active"><i class="fa-solid fa-check"></i> Cloud Synced</span>
+            </div>
+
+            <!-- Score Overview Card -->
+            <div class="card score-card">
+                <div class="score-top">
+                    <div class="score-info">
+                        <span id="result-status-badge" class="status-badge is-pass">தேர்ச்சியடைந்தது (Passed)</span>
+                        <h2 class="score-title">தேர்வு முடிவுகள் (Exam Results)</h2>
+                        <p id="result-subtitle" class="score-subtitle">அலகு 1 – கணினித் தொழில்நுட்பம்</p>
+                    </div>
+
+                    <div class="score-box">
+                        <div class="score-item">
+                            <span>புள்ளிகள்</span>
+                            <span id="res-score-text" class="score-big is-brand">32/40</span>
+                        </div>
+                        <div class="score-divider"></div>
+                        <div class="score-item">
+                            <span>சதவீதம்</span>
+                            <span id="res-percentage-text" class="score-big is-green">80%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Breakdown Cards -->
+                <div class="stats-grid">
+                    <div class="stat">
+                        <span class="stat-label">சரியானவை</span>
+                        <span id="stat-correct-count" class="stat-value is-green">32</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">தவறானவை</span>
+                        <span id="stat-wrong-count" class="stat-value is-red">8</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">விடையளிக்கப்படாதவை</span>
+                        <span id="stat-skipped-count" class="stat-value is-grey">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">எடுத்துக்கொண்ட நேரம்</span>
+                        <span id="stat-time-spent" class="stat-value is-dark">12m 45s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="review-head">
+                <h3 class="review-title">விடைகளின் விரிவான ஆய்வு (Question Review)</h3>
+                <div class="review-actions">
+                    <button onclick="returnToLobby()" class="btn btn-neutral">
+                        <i class="fa-solid fa-house"></i>
+                        <span>முகப்பிற்குச் செல்</span>
+                    </button>
+                    <button onclick="restartCurrentQuiz()" class="btn btn-primary">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>மீண்டும் முயற்சி செய்</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Detailed Question-by-Question Review List -->
+            <div id="review-list-container" class="review-list">
+                <!-- Dynamically generated detailed review cards -->
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- View 4: Admin Management Dashboard         -->
+        <!-- ========================================== -->
+        <div id="admin-view" class="view hidden">
+            <div class="admin-card">
+                <!-- Admin Header Bar -->
+                <div class="admin-header-bar">
+                    <div class="admin-header-title">
+                        <i class="fa-solid fa-chalkboard-user" style="font-size: 1.5rem; color: var(--brand-400);"></i>
+                        <div>
+                            <h2>நிர்வாகக் கட்டுப்பாட்டுப் பலகை (Admin Dashboard)</h2>
+                            <p>மாணவர் கணக்குகள் மேலாண்மை &amp; 6 அலகுகளின் தேர்வு முடிவுகள்</p>
+                        </div>
+                    </div>
+                    <div class="admin-top-actions">
+                        <button onclick="showLobbyView()" class="btn-secondary-action" style="background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.2);">
+                            <i class="fa-solid fa-eye"></i>
+                            <span>தேர்வு முகப்பைப் பார்</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Admin Tabs Navigation -->
+                <div class="admin-nav">
+                    <button type="button" id="btn-adm-tab-overview" onclick="switchAdminTab('overview')" class="admin-tab-btn is-active">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>மேற்பார்வை (Overview)</span>
+                    </button>
+                    <button type="button" id="btn-adm-tab-results" onclick="switchAdminTab('results')" class="admin-tab-btn">
+                        <i class="fa-solid fa-square-poll-vertical"></i>
+                        <span>தேர்வு முடிவுகள் (Exam Results)</span>
+                        <span id="badge-results-count" class="tab-badge">0</span>
+                    </button>
+                    <button type="button" id="btn-adm-tab-matrix" onclick="switchAdminTab('matrix')" class="admin-tab-btn">
+                        <i class="fa-solid fa-table-cells"></i>
+                        <span>6 அலகுகளின் பட்டியல் (Consolidated Marksheet)</span>
+                    </button>
+                    <button type="button" id="btn-adm-tab-students" onclick="switchAdminTab('students')" class="admin-tab-btn">
+                        <i class="fa-solid fa-users"></i>
+                        <span>100 மாணவர் கணக்குகள் (Student Accounts)</span>
+                        <span id="badge-students-count" class="tab-badge">100</span>
+                    </button>
+                    <button type="button" id="btn-adm-tab-cloud" onclick="switchAdminTab('cloud')" class="admin-tab-btn">
+                        <i class="fa-solid fa-cloud"></i>
+                        <span>Firebase அமைப்புகள் (Cloud Config)</span>
+                    </button>
+                </div>
+
+                <div class="admin-content">
+                    <!-- Tab Pane 1: Overview -->
+                    <div id="pane-adm-overview">
+                        <!-- 4 Stat Metrics -->
+                        <div class="admin-metrics">
+                            <div class="metric-card">
+                                <div class="metric-icon is-blue"><i class="fa-solid fa-users"></i></div>
+                                <div class="metric-data">
+                                    <h4>மொத்த மாணவர்கள்</h4>
+                                    <div id="metric-total-students" class="metric-value">100</div>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon is-green"><i class="fa-solid fa-user-check"></i></div>
+                                <div class="metric-data">
+                                    <h4>செயலில் உள்ள கணக்குகள்</h4>
+                                    <div id="metric-active-students" class="metric-value">100</div>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon is-purple"><i class="fa-solid fa-file-signature"></i></div>
+                                <div class="metric-data">
+                                    <h4>எழுதப்பட்ட தேர்வுகள்</h4>
+                                    <div id="metric-total-exams" class="metric-value">0</div>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon is-amber"><i class="fa-solid fa-award"></i></div>
+                                <div class="metric-data">
+                                    <h4>சராசரி தேர்ச்சி %</h4>
+                                    <div id="metric-avg-score" class="metric-value">0%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Unit-wise Performance Breakdown -->
+                        <div class="card" style="padding: 1.5rem;">
+                            <h3 class="card-title" style="margin-bottom: 1rem;">
+                                <i class="fa-solid fa-chart-column"></i>
+                                <span>அலகு ரீதியான தேர்ச்சி நிலவரம் (Unit-wise Performance Analysis)</span>
+                            </h3>
+                            <div class="unit-performance-grid" id="unit-performance-container">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Pane 2: Results & Student Search -->
+                    <div id="pane-adm-results" class="hidden">
+                        <div class="admin-toolbar">
+                            <div class="toolbar-search">
+                                <i class="fa-solid fa-magnifying-glass" style="color: var(--slate-400);"></i>
+                                <input type="text" id="search-result-input" oninput="filterAdminResults()" class="form-control" placeholder="மாணவர் பயனர் பெயர் அல்லது பெயரால் தேடுக...">
+                            </div>
+                            <div class="toolbar-filters">
+                                <select id="filter-result-unit" onchange="filterAdminResults()" class="select" style="padding: 0.45rem 0.75rem; font-size: 0.82rem;">
+                                    <option value="all">அனைத்து அலகுகளும் (All Units)</option>
+                                    <option value="1">அலகு 1</option>
+                                    <option value="2">அலகு 2</option>
+                                    <option value="3">அலகு 3</option>
+                                    <option value="4">அலகு 4</option>
+                                    <option value="5">அலகு 5</option>
+                                    <option value="6">அலகு 6</option>
+                                </select>
+                                <select id="filter-result-status" onchange="filterAdminResults()" class="select" style="padding: 0.45rem 0.75rem; font-size: 0.82rem;">
+                                    <option value="all">அனைத்து முடிவுகளும்</option>
+                                    <option value="Passed">தேர்ச்சி (Passed)</option>
+                                    <option value="Needs Improvement">பயிற்சி தேவை</option>
+                                </select>
+                            </div>
+                            <div class="toolbar-actions">
+                                <button onclick="exportResultsToExcel()" class="btn-excel" title="தேர்வு முடிவுகளை எக்செல் ஆவணமாக பதிவிறக்கவும்">
+                                    <i class="fa-solid fa-file-excel"></i>
+                                    <span>எக்செல் ஏற்றுமதி (Export .xlsx)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Results Table -->
+                        <div class="table-responsive custom-scrollbar">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>மாணவர் ID</th>
+                                        <th>மாணவர் பெயர்</th>
+                                        <th>அலகு (Unit)</th>
+                                        <th>முறை</th>
+                                        <th>மதிப்பெண்</th>
+                                        <th>சதவீதம்</th>
+                                        <th>முடிவு</th>
+                                        <th>தேதி &amp; நேரம்</th>
+                                        <th style="text-align: center;">செயல்</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-results-tbody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab Pane 3: 6-Unit Consolidated Marksheet Matrix -->
+                    <div id="pane-adm-matrix" class="hidden">
+                        <div class="admin-toolbar">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa-solid fa-table-list" style="color: var(--brand-600); font-size: 1.1rem;"></i>
+                                <span style="font-size: 0.85rem; font-weight: 700; color: var(--slate-800);">
+                                    அனைத்து 100 மாணவர்களினதும் 6 அலகுகள் ரீதியான மதிப்பெண் விபரம்
+                                </span>
+                            </div>
+                            <div class="toolbar-actions">
+                                <button onclick="exportMatrixToExcel()" class="btn-excel" title="6 அலகுகளின் ஒருங்கிணைந்த பட்டியலை எக்செல் ஆவணமாக பதிவிறக்கவும்">
+                                    <i class="fa-solid fa-file-excel"></i>
+                                    <span>மதிப்பெண் பட்டியலை ஏற்றுமதி செய் (.xlsx)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Cross-Unit Matrix Table -->
+                        <div class="table-responsive custom-scrollbar">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">வ.எண்</th>
+                                        <th>பயனர் பெயர்</th>
+                                        <th>மாணவர் பெயர்</th>
+                                        <th style="text-align: center;">அலகு 1</th>
+                                        <th style="text-align: center;">அலகு 2</th>
+                                        <th style="text-align: center;">அலகு 3</th>
+                                        <th style="text-align: center;">அலகு 4</th>
+                                        <th style="text-align: center;">அலகு 5</th>
+                                        <th style="text-align: center;">அலகு 6</th>
+                                        <th style="text-align: center;">சராசரி %</th>
+                                        <th>செயல்திறன் தரம்</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-matrix-tbody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab Pane 4: 100 Student Accounts Management -->
+                    <div id="pane-adm-students" class="hidden">
+                        <div class="admin-toolbar">
+                            <div class="toolbar-search">
+                                <i class="fa-solid fa-magnifying-glass" style="color: var(--slate-400);"></i>
+                                <input type="text" id="search-student-input" oninput="filterAdminStudents()" class="form-control" placeholder="பயனர் பெயர் (std001) அல்லது பெயரால் தேடுக...">
+                            </div>
+                            <div class="toolbar-filters">
+                                <select id="filter-student-status" onchange="filterAdminStudents()" class="select" style="padding: 0.45rem 0.75rem; font-size: 0.82rem;">
+                                    <option value="all">அனைத்து நிலைகளும் (All)</option>
+                                    <option value="active">செயலில் உள்ளவை (Active)</option>
+                                    <option value="inactive">முடக்கப்பட்டவை (Inactive)</option>
+                                </select>
+                            </div>
+                            <div class="toolbar-actions">
+                                <button onclick="openAddStudentModal()" class="btn-secondary-action">
+                                    <i class="fa-solid fa-user-plus" style="color: var(--brand-600);"></i>
+                                    <span>புதிய மாணவர் சேர்க்க</span>
+                                </button>
+                                <button onclick="seed100AccountsAdmin()" class="btn-secondary-action" title="Firestore இல் 100 கணக்குகளையும் உடனடியாக உருவாக்குங்கள்">
+                                    <i class="fa-solid fa-cloud-arrow-up" style="color: var(--green-600);"></i>
+                                    <span>100 கணக்குகளை Cloud இல் பதிவு செய்</span>
+                                </button>
+                                <button onclick="exportStudentAccountsToExcel()" class="btn-excel" title="மாணவர் கடவுச்சொல் மற்றும் உள்நுழைவு விபரங்களை ஏற்றுமதி செய்">
+                                    <i class="fa-solid fa-file-excel"></i>
+                                    <span>கணக்கு விபரங்கள் (.xlsx)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Students Table -->
+                        <div class="table-responsive custom-scrollbar">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60px;">வ.எண்</th>
+                                        <th>பயனர் பெயர் (Username)</th>
+                                        <th>மாணவர் பெயர் (Name)</th>
+                                        <th>கணக்கு நிலை (Status)</th>
+                                        <th>கடைசி உள்நுழைவு</th>
+                                        <th style="text-align: center; width: 140px;">செயல்கள்</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-students-tbody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab Pane 5: Firebase & Cloud Settings -->
+                    <div id="pane-adm-cloud" class="hidden">
+                        <div class="card" style="padding: 1.5rem; max-width: 720px;">
+                            <h3 class="card-title" style="margin-bottom: 0.5rem;">
+                                <i class="fa-solid fa-cloud-bolt"></i>
+                                <span>Firebase Authentication &amp; Cloud Firestore அமைப்புகள்</span>
+                            </h3>
+                            <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1.25rem;">
+                                இந்தத் தேர்வுத் தளம் Google Firebase உடன் முழுமையாக இணைக்கப்படக்கூடியவாறு வடிவமைக்கப்பட்டுள்ளது. உங்கள் Firebase திட்டத்தின் விவரங்களை உள்ளிடுவதன் மூலம் மாணவர்கள் எந்தக் கணினியிலிருந்தும் தேர்வுகளை எழுதலாம்.
+                            </p>
+
+                            <div id="cloud-status-display" style="padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; background: var(--slate-50); border: 1px solid var(--slate-200);">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="font-weight: 700; font-size: 0.88rem;">தற்போதைய கிளவுட் நிலை:</span>
+                                    <span id="cloud-connection-badge" class="status-pill is-active">Local Simulation Mode</span>
+                                </div>
+                                <p id="cloud-project-text" style="font-size: 0.78rem; color: var(--slate-500); margin-top: 0.35rem;">
+                                    கோப்பு: firebase-config.js | திட்ட ID: Local
+                                </p>
+                            </div>
+
+                            <form onsubmit="saveCustomFirebaseConfig(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                                <div class="form-group">
+                                    <label class="form-label" for="cfg-api-key">Firebase API Key (apiKey)</label>
+                                    <input type="text" id="cfg-api-key" class="form-control" style="padding-left: 0.85rem;" placeholder="AIzaSy...">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="cfg-project-id">Project ID (projectId)</label>
+                                    <input type="text" id="cfg-project-id" class="form-control" style="padding-left: 0.85rem;" placeholder="ict-grade6-exam">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="cfg-auth-domain">Auth Domain (authDomain)</label>
+                                    <input type="text" id="cfg-auth-domain" class="form-control" style="padding-left: 0.85rem;" placeholder="ict-grade6-exam.firebaseapp.com">
+                                </div>
+
+                                <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
+                                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                                        <i class="fa-solid fa-floppy-disk"></i>
+                                        <span>அமைப்புகளைச் சேமி (Save Config)</span>
+                                    </button>
+                                    <button type="button" onclick="clearCustomFirebaseConfig()" class="btn btn-secondary">
+                                        <i class="fa-solid fa-rotate-left"></i>
+                                        <span>இயல்புநிலைக்கு மாற்று</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modals -->
+    <!-- Modal: Add Student -->
+    <div id="modal-add-student" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3>புதிய மாணவர் கணக்கு உருவாக்கம்</h3>
+                <button type="button" onclick="closeAddStudentModal()" style="font-size: 1.25rem; color: var(--slate-500);"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="submitAddStudent(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">வரிசை எண் (Roll Number)</label>
+                        <input type="number" id="add-std-roll" class="form-control" style="padding-left: 0.85rem;" min="1" max="500" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">பயனர் பெயர் (Username / ID)</label>
+                        <input type="text" id="add-std-user" class="form-control" style="padding-left: 0.85rem;" placeholder="std101" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">மாணவர் பெயர் (Full Name)</label>
+                        <input type="text" id="add-std-name" class="form-control" style="padding-left: 0.85rem;" placeholder="மாணவர் 101" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">கடவுச்சொல் (Password)</label>
+                        <input type="password" id="add-std-pass" class="form-control" style="padding-left: 0.85rem;" placeholder="ict@std101" required>
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" onclick="closeAddStudentModal()" class="btn btn-secondary">ரத்து செய்</button>
+                    <button type="submit" class="btn btn-primary">கணக்கை உருவாக்கு</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Edit Student -->
+    <div id="modal-edit-student" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3>மாணவர் விபரங்களை மாற்றியமைத்தல்</h3>
+                <button type="button" onclick="closeEditStudentModal()" style="font-size: 1.25rem; color: var(--slate-500);"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="submitEditStudent(event)">
+                <input type="hidden" id="edit-std-username">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">பயனர் பெயர் (Username)</label>
+                        <input type="text" id="edit-std-user-display" class="form-control" style="padding-left: 0.85rem; background: var(--slate-100);" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">வரிசை எண் (Roll No)</label>
+                        <input type="number" id="edit-std-roll" class="form-control" style="padding-left: 0.85rem;" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">மாணவர் பெயர் (Name)</label>
+                        <input type="text" id="edit-std-name" class="form-control" style="padding-left: 0.85rem;" required>
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" onclick="closeEditStudentModal()" class="btn btn-secondary">ரத்து செய்</button>
+                    <button type="submit" class="btn btn-primary">மாற்றங்களைச் சேமி</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Reset Password -->
+    <div id="modal-reset-password" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-head">
+                <h3>மாணவர் கடவுச்சொல் மீட்டமைப்பு (Reset Password)</h3>
+                <button type="button" onclick="closeResetPasswordModal()" style="font-size: 1.25rem; color: var(--slate-500);"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="submitResetPassword(event)">
+                <input type="hidden" id="reset-std-username">
+                <div class="modal-body">
+                    <p id="reset-std-info" style="font-size: 0.85rem; color: var(--slate-600);">
+                        மாணவர்: <strong id="reset-std-name-display">std001</strong>
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label">புதிய கடவுச்சொல் (New Password)</label>
+                        <input type="password" id="reset-std-newpass" class="form-control" style="padding-left: 0.85rem;" placeholder="குறைந்தது 6 எழுத்துகள்" required minlength="4">
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--slate-500);">
+                        * கடவுச்சொல் தானாகவே SHA-256 முறையில் குறியாக்கம் செய்யப்பட்டுப் பாதுகாக்கப்படும்.
+                    </p>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" onclick="closeResetPasswordModal()" class="btn btn-secondary">ரத்து செய்</button>
+                    <button type="submit" class="btn btn-primary">கடவுச்சொல்லை மாற்று</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <p>Grade 6 ICT Question Bank | இலங்கை 6 ஆம் தர தகவல் மற்றும் தொடர்பாடல் தொழில்நுட்ப பாடத்திட்டம் | Firebase Auth &amp; Cloud Firestore Powered</p>
+    </footer>
+
+    <!-- Main Logic & Controller Engine -->
+    <script>
+        // Unit Titles Map
+        const unitTitles = {
+            1: "அலகு 1 – கணினித் தொழில்நுட்பம்",
+            2: "அலகு 2 – கணினி வசதிகளைப் பாதுகாப்பாகப் பயன்படுத்துதல்",
+            3: "அலகு 3 – இயக்க முறைமைகளும் கோப்புகளைக் கையாளுதலும்",
+            4: "அலகு 4 – சுட்டி மற்றும் விசைப்பலகையைப் பயன்படுத்துதல்",
+            5: "அலகு 5 – படிமுறைகளும் பாய்வு வரைபடங்களும்",
+            6: "அலகு 6 – தகவல்களைத் திரட்டுதலும் தொடர்பாடலுக்கான இணையமும்"
+        };
+
+        // Quiz State variables
+        let selectedUnit = 'all'; // 'all' or 1 to 6
+        let examMode = 'practice'; // 'practice' or 'exam'
+        let activeQuestions = [];
+        let currentIndex = 0;
+        let userAnswers = {}; // { qId: optionIndex }
+        let bookmarkedQ = new Set();
+        let timerInterval = null;
+        let timeRemaining = 0; // seconds
+        let timeElapsed = 0;
+
+        // Current Logged-in User State
+        let currentUser = null; // { role: 'student'|'admin', username, name, ... }
+
+        // Cached Admin Data
+        let cachedStudents = [];
+        let cachedResults = [];
+
+        // --------------------------------------------------------------------
+        // Initialization Lifecycle
+        // --------------------------------------------------------------------
+        window.addEventListener('DOMContentLoaded', async () => {
+            renderUnitOptions();
+            updateCloudPill();
+
+            // Check if there is an active session
+            const session = DataService.getCurrentSession();
+            if (session) {
+                applyUserSession(session);
+            } else {
+                showView('auth-view');
+            }
+        });
+
+        function updateCloudPill() {
+            const status = DataService.getCloudStatus();
+            const pill = document.getElementById('header-cloud-pill');
+            const text = document.getElementById('header-cloud-text');
+            if (status.connected) {
+                pill.className = "cloud-status-pill is-connected";
+                text.textContent = "Cloud Connected";
+            } else {
+                pill.className = "cloud-status-pill is-local";
+                text.textContent = "Local Store";
+            }
+        }
+
+        function showView(viewId) {
+            ['auth-view', 'lobby-view', 'exam-view', 'results-view', 'admin-view'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (id === viewId) el.classList.remove('hidden');
+                    else el.classList.add('hidden');
+                }
+            });
+
+            // Adjust header controls
+            if (viewId === 'exam-view') {
+                document.getElementById('header-stats').classList.remove('hidden');
+            } else {
+                document.getElementById('header-stats').classList.add('hidden');
+            }
+        }
+
+        function applyUserSession(user) {
+            currentUser = user;
+            const userPill = document.getElementById('header-user-pill');
+            const userName = document.getElementById('header-user-name');
+            const userIcon = document.getElementById('header-user-icon');
+            const btnAdminNav = document.getElementById('btn-header-admin-nav');
+            const btnExamNav = document.getElementById('btn-header-exam-nav');
+            const btnLogout = document.getElementById('btn-header-logout');
+
+            userPill.classList.remove('hidden');
+            btnLogout.classList.remove('hidden');
+
+            if (user.role === 'admin') {
+                userPill.className = "user-badge is-admin";
+                userIcon.className = "fa-solid fa-user-tie";
+                userName.textContent = user.name || "Admin";
+                btnAdminNav.classList.remove('hidden');
+                btnExamNav.classList.remove('hidden');
+                showAdminView();
+            } else {
+                userPill.className = "user-badge";
+                userIcon.className = "fa-solid fa-user-graduate";
+                userName.textContent = user.username + (user.name ? ` (${user.name})` : "");
+                btnAdminNav.classList.add('hidden');
+                btnExamNav.classList.add('hidden');
+                showLobbyView();
+            }
+        }
+
+        function goToHome() {
+            if (!currentUser) {
+                showView('auth-view');
+            } else if (currentUser.role === 'admin') {
+                showAdminView();
+            } else {
+                showLobbyView();
+            }
+        }
+
+        // --------------------------------------------------------------------
+        // Authentication View & Handlers
+        // --------------------------------------------------------------------
+        function switchLoginTab(role) {
+            const tabStd = document.getElementById('tab-login-student');
+            const tabAdm = document.getElementById('tab-login-admin');
+            const formStd = document.getElementById('form-student-login');
+            const formAdm = document.getElementById('form-admin-login');
+            const alertBox = document.getElementById('login-alert');
+
+            alertBox.classList.add('hidden');
+
+            if (role === 'student') {
+                tabStd.classList.add('is-active');
+                tabAdm.classList.remove('is-active');
+                formStd.classList.remove('hidden');
+                formAdm.classList.add('hidden');
+            } else {
+                tabAdm.classList.add('is-active');
+                tabStd.classList.remove('is-active');
+                formAdm.classList.remove('hidden');
+                formStd.classList.add('hidden');
+            }
+        }
+
+        async function handleStudentLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-student-user').value;
+            const password = document.getElementById('login-student-pass').value;
+            const alertBox = document.getElementById('login-alert');
+            const alertText = document.getElementById('login-alert-text');
+            const btn = document.getElementById('btn-student-submit');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>சரிபார்க்கப்படுகிறது...</span>';
+
+            const res = await DataService.authenticateStudent(username, password);
+            btn.disabled = false;
+            btn.innerHTML = '<span>உள்நுழைக (Student Login)</span> <i class="fa-solid fa-arrow-right-to-bracket"></i>';
+
+            if (res.success) {
+                alertBox.classList.add('hidden');
+                applyUserSession(res.user);
+            } else {
+                alertText.textContent = res.error || "தவறான பயனர் பெயர் அல்லது கடவுச்சொல்.";
+                alertBox.classList.remove('hidden');
+            }
+        }
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const input = document.getElementById('login-admin-user').value;
+            const password = document.getElementById('login-admin-pass').value;
+            const alertBox = document.getElementById('login-alert');
+            const alertText = document.getElementById('login-alert-text');
+            const btn = document.getElementById('btn-admin-submit');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>சரிபார்க்கப்படுகிறது...</span>';
+
+            const res = await DataService.authenticateAdmin(input, password);
+            btn.disabled = false;
+            btn.innerHTML = '<span>நிர்வாகியாக உள்நுழைக</span> <i class="fa-solid fa-shield-halved"></i>';
+
+            if (res.success) {
+                alertBox.classList.add('hidden');
+                applyUserSession(res.user);
+            } else {
+                alertText.textContent = res.error || "தவறான நிர்வாகி மின்னஞ்சல் அல்லது கடவுச்சொல்.";
+                alertBox.classList.remove('hidden');
+            }
+        }
+
+        function quickFillStudent(user, pass) {
+            switchLoginTab('student');
+            document.getElementById('login-student-user').value = user;
+            document.getElementById('login-student-pass').value = pass;
+        }
+
+        function quickFillAdmin(email, pass) {
+            switchLoginTab('admin');
+            document.getElementById('login-admin-user').value = email;
+            document.getElementById('login-admin-pass').value = pass;
+        }
+
+        function logoutUser() {
+            DataService.logout();
+            currentUser = null;
+            document.getElementById('header-user-pill').classList.add('hidden');
+            document.getElementById('btn-header-admin-nav').classList.add('hidden');
+            document.getElementById('btn-header-exam-nav').classList.add('hidden');
+            document.getElementById('btn-header-logout').classList.add('hidden');
+            showView('auth-view');
+        }
+
+        // --------------------------------------------------------------------
+        // Lobby & Exam Flow
+        // --------------------------------------------------------------------
+        function showLobbyView() {
+            showView('lobby-view');
+            if (currentUser) {
+                document.getElementById('lobby-welcome-tag').textContent = `மாணவர்: ${currentUser.username}`;
+                document.getElementById('lobby-welcome-title').textContent = `வணக்கம் ${currentUser.name || currentUser.username}! தேர்வுக்குத் தயாரா?`;
+            }
+        }
+
+        function renderUnitOptions() {
+            const container = document.getElementById('unit-selector-container');
+            let html = `
+                <div onclick="selectUnit('all')" id="unit-card-all" class="unit-card is-selected">
+                    <div>
+                        <h4>அனைத்து அலகுகளும் (Full Mock)</h4>
+                        <p>மொத்தம் 240 வினாக்கள்</p>
+                    </div>
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            `;
+
+            for (let u = 1; u <= 6; u++) {
+                html += `
+                    <div onclick="selectUnit(${u})" id="unit-card-${u}" class="unit-card">
+                        <div>
+                            <h4>${unitTitles[u]}</h4>
+                            <p>40 வினாக்கள்</p>
+                        </div>
+                        <i class="fa-regular fa-circle"></i>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function selectUnit(u) {
+            selectedUnit = u;
+            document.querySelectorAll('.unit-card').forEach(el => {
+                el.classList.remove('is-selected');
+                const icon = el.querySelector('i');
+                if (icon) icon.className = 'fa-regular fa-circle';
+            });
+
+            const activeCard = document.getElementById(`unit-card-${u}`);
+            if (activeCard) {
+                activeCard.classList.add('is-selected');
+                const icon = activeCard.querySelector('i');
+                if (icon) icon.className = 'fa-solid fa-circle-check';
+            }
+        }
+
+        function setMode(mode) {
+            examMode = mode;
+            const practiceBtn = document.getElementById('btn-mode-practice');
+            const examBtn = document.getElementById('btn-mode-exam');
+            const desc = document.getElementById('mode-desc');
+
+            if (mode === 'practice') {
+                practiceBtn.className = "mode-btn is-active";
+                examBtn.className = "mode-btn";
+                desc.textContent = "பயிற்சி முறை: ஒவ்வொரு விடையின் போதும் உடனடி விடை சரிபார்ப்பு மற்றும் விளக்கம் கிடைக்கும்.";
+            } else {
+                examBtn.className = "mode-btn is-active";
+                practiceBtn.className = "mode-btn";
+                desc.textContent = "நேரத் தேர்வு முறை: இறுதி வரை விடைகள் காட்டப்படாது. நேரம் முடிந்ததும் முழுமையான தேர்வு அறிக்கை கிடைக்கும்.";
+            }
+        }
+
+        function startQuiz() {
+            if (!currentUser) {
+                showView('auth-view');
+                return;
+            }
+
+            // Filter questions
+            if (typeof rawQuestionBank === 'undefined' || rawQuestionBank.length === 0) {
+                alert("வினா வங்கி ஏற்றப்படவில்லை. தயவுசெய்து பக்கத்தைப் புதுப்பிக்கவும்.");
+                return;
+            }
+
+            if (selectedUnit === 'all') {
+                activeQuestions = [...rawQuestionBank];
+            } else {
+                activeQuestions = rawQuestionBank.filter(q => q.u === parseInt(selectedUnit));
+            }
+
+            const limitVal = document.getElementById('question-count-select').value;
+            if (limitVal !== 'all') {
+                const limit = parseInt(limitVal);
+                activeQuestions = shuffleArray([...activeQuestions]).slice(0, limit);
+            }
+
+            if (activeQuestions.length === 0) return;
+
+            // Reset States
+            currentIndex = 0;
+            userAnswers = {};
+            bookmarkedQ.clear();
+            timeElapsed = 0;
+
+            // Header stats
+            document.getElementById('header-stats').classList.remove('hidden');
+            document.getElementById('header-mode-badge').textContent = examMode === 'practice' ? 'பயிற்சி முறை' : 'நேரத் தேர்வு';
+
+            // Setup timer
+            const isTimerEnabled = document.getElementById('timer-toggle').checked;
+            if (isTimerEnabled) {
+                timeRemaining = activeQuestions.length * 60; // 1 min per q
+                startTimer();
+            } else {
+                document.getElementById('timer-display').textContent = "--:--";
+            }
+
+            showView('exam-view');
+            renderPalette();
+            loadQuestion(0);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function loadQuestion(index) {
+            currentIndex = index;
+            const q = activeQuestions[index];
+
+            document.getElementById('current-q-num').textContent = index + 1;
+            document.getElementById('total-q-num').textContent = activeQuestions.length;
+            document.getElementById('q-badge-num').textContent = index + 1;
+            document.getElementById('active-unit-badge').textContent = unitTitles[q.u] || `அலகு ${q.u}`;
+
+            const pct = ((index + 1) / activeQuestions.length) * 100;
+            document.getElementById('progress-bar').style.width = `${pct}%`;
+
+            document.getElementById('question-text').textContent = `${q.id}. ${q.q}`;
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            const selectedOpt = userAnswers[q.id];
+            const letters = ['A', 'B', 'C', 'D'];
+
+            q.o.forEach((optText, optIdx) => {
+                const isSelected = selectedOpt === optIdx;
+                let stateClass = isSelected ? "is-selected" : "";
+
+                if (examMode === 'practice' && selectedOpt !== undefined) {
+                    if (optIdx === q.a) {
+                        stateClass = "is-correct";
+                    } else if (isSelected && selectedOpt !== q.a) {
+                        stateClass = "is-wrong";
+                    }
+                }
+
+                const optEl = document.createElement('div');
+                optEl.className = `option ${stateClass}`;
+                optEl.onclick = () => selectOption(q.id, optIdx);
+
+                optEl.innerHTML = `
+                    <div class="option-main">
+                        <span class="option-letter">${letters[optIdx]}</span>
+                        <span class="option-text">${optText}</span>
+                    </div>
+                    <div class="option-radio ${isSelected ? 'is-checked' : ''}">
+                        ${isSelected ? '<i class="fa-solid fa-check"></i>' : ''}
+                    </div>
+                `;
+                container.appendChild(optEl);
+            });
+
+            // Instant Feedback
+            const feedbackBox = document.getElementById('feedback-box');
+            if (examMode === 'practice' && selectedOpt !== undefined) {
+                feedbackBox.classList.remove('hidden');
+                const isCorrect = selectedOpt === q.a;
+
+                if (isCorrect) {
+                    feedbackBox.className = "feedback is-correct";
+                    document.getElementById('feedback-title').innerHTML = `<i class="fa-solid fa-circle-check"></i><span>சரியான விடை! (Correct)</span>`;
+                    document.getElementById('feedback-desc').textContent = `மிகச் சிறப்பு! சரியான விடை: (${letters[q.a]}) ${q.o[q.a]}`;
+                } else {
+                    feedbackBox.className = "feedback is-incorrect";
+                    document.getElementById('feedback-title').innerHTML = `<i class="fa-solid fa-circle-xmark"></i><span>தவறான விடை! (Incorrect)</span>`;
+                    document.getElementById('feedback-desc').textContent = `சரியான விடை: (${letters[q.a]}) ${q.o[q.a]}`;
+                }
+            } else {
+                feedbackBox.classList.add('hidden');
+            }
+
+            // Bookmark button
+            const bmBtn = document.getElementById('btn-bookmark');
+            bmBtn.className = bookmarkedQ.has(q.id) ? "icon-btn is-bookmarked" : "icon-btn";
+
+            // Controls
+            document.getElementById('btn-prev-q').disabled = index === 0;
+
+            if (index === activeQuestions.length - 1) {
+                document.getElementById('btn-next-q').classList.add('hidden');
+                document.getElementById('btn-submit-exam').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-next-q').classList.remove('hidden');
+                document.getElementById('btn-submit-exam').classList.add('hidden');
+            }
+
+            updatePaletteUI();
+        }
+
+        function selectOption(qId, optionIndex) {
+            userAnswers[qId] = optionIndex;
+            loadQuestion(currentIndex);
+        }
+
+        function navigateQuestion(direction) {
+            const nextIdx = currentIndex + direction;
+            if (nextIdx >= 0 && nextIdx < activeQuestions.length) {
+                loadQuestion(nextIdx);
+            }
+        }
+
+        function toggleBookmarkCurrent() {
+            const q = activeQuestions[currentIndex];
+            if (bookmarkedQ.has(q.id)) {
+                bookmarkedQ.delete(q.id);
+            } else {
+                bookmarkedQ.add(q.id);
+            }
+            loadQuestion(currentIndex);
+        }
+
+        function renderPalette() {
+            const grid = document.getElementById('palette-grid');
+            grid.innerHTML = '';
+
+            activeQuestions.forEach((q, idx) => {
+                const btn = document.createElement('button');
+                btn.id = `palette-btn-${idx}`;
+                btn.onclick = () => loadQuestion(idx);
+                btn.className = "palette-btn";
+                btn.textContent = idx + 1;
+                grid.appendChild(btn);
+            });
+        }
+
+        function updatePaletteUI() {
+            let answeredCount = 0;
+            activeQuestions.forEach((q, idx) => {
+                const btn = document.getElementById(`palette-btn-${idx}`);
+                if (!btn) return;
+
+                const isAnswered = userAnswers[q.id] !== undefined;
+                const isBookmarked = bookmarkedQ.has(q.id);
+                const isCurrent = idx === currentIndex;
+
+                if (isAnswered) answeredCount++;
+
+                let stateClass = "";
+                if (isAnswered) stateClass = "is-answered";
+                if (isBookmarked) stateClass = "is-bookmarked";
+
+                btn.className = `palette-btn ${stateClass} ${isCurrent ? "is-current" : ""}`;
+            });
+
+            document.getElementById('answered-count-badge').textContent = `${answeredCount}/${activeQuestions.length}`;
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                timeElapsed++;
+
+                const mins = Math.floor(timeRemaining / 60);
+                const secs = timeRemaining % 60;
+                document.getElementById('timer-display').textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    finishExam();
+                }
+            }, 1000);
+        }
+
+        function confirmSubmitExam() {
+            const unanswered = activeQuestions.length - Object.keys(userAnswers).length;
+            let msg = "நிச்சயமாகத் தேர்வை முடிக்க விரும்புகிறீர்களா?";
+            if (unanswered > 0) {
+                msg = `இன்னும் ${unanswered} வினாக்களுக்கு விடையளிக்கவில்லை. தேர்வை முடிக்க விரும்புகிறீர்களா?`;
+            }
+            if (confirm(msg)) {
+                finishExam();
+            }
+        }
+
+        function quitExam() {
+            if (confirm("தேர்விலிருந்து வெளியேற விரும்புகிறீர்களா? உங்களது தற்போதைய விடைகள் சேமிக்கப்படாது.")) {
+                returnToLobby();
+            }
+        }
+
+        // --------------------------------------------------------------------
+        // Automatic Cloud Result Saving & Results Presentation
+        // --------------------------------------------------------------------
+        async function finishExam() {
+            clearInterval(timerInterval);
+
+            // Calculate score
+            let correctCount = 0;
+            activeQuestions.forEach(q => {
+                if (userAnswers[q.id] === q.a) {
+                    correctCount++;
+                }
+            });
+
+            const total = activeQuestions.length;
+            const percentage = Math.round((correctCount / total) * 100);
+
+            const mins = Math.floor(timeElapsed / 60);
+            const secs = timeElapsed % 60;
+            const formattedTime = `${mins}m ${secs}s`;
+
+            // UI update for results
+            showView('results-view');
+
+            document.getElementById('res-score-text').textContent = `${correctCount}/${total}`;
+            document.getElementById('res-percentage-text').textContent = `${percentage}%`;
+
+            document.getElementById('stat-correct-count').textContent = correctCount;
+            document.getElementById('stat-wrong-count').textContent = Object.keys(userAnswers).length - correctCount;
+            document.getElementById('stat-skipped-count').textContent = total - Object.keys(userAnswers).length;
+            document.getElementById('stat-time-spent').textContent = formattedTime;
+
+            const badge = document.getElementById('result-status-badge');
+            if (percentage >= 50) {
+                badge.className = "status-badge is-pass";
+                badge.textContent = "தேர்ச்சியடைந்தது (Passed)";
+            } else {
+                badge.className = "status-badge is-fail";
+                badge.textContent = "மீண்டும் பயிற்சி தேவை (Needs Improvement)";
+            }
+
+            const unitLabel = selectedUnit === 'all' ? 'அனைத்து அலகுகளும் (Full Mock Exam)' : unitTitles[selectedUnit];
+            document.getElementById('result-subtitle').textContent = unitLabel;
+
+            // Save automatically to Cloud Firestore
+            const studentUser = currentUser ? currentUser.username : "std001";
+            const studentName = currentUser ? (currentUser.name || currentUser.username) : "Student";
+
+            const saveRes = await DataService.saveExamResult({
+                studentUsername: studentUser,
+                studentName: studentName,
+                unit: unitLabel,
+                unitId: selectedUnit === 'all' ? 0 : parseInt(selectedUnit),
+                marks: correctCount,
+                total: total,
+                percentage: percentage,
+                mode: examMode,
+                timeSpent: formattedTime
+            });
+
+            // Update Cloud Banner Meta
+            const bannerMeta = document.getElementById('cloud-save-meta');
+            const saveTime = new Date().toLocaleTimeString('ta-LK', { hour: '2-digit', minute: '2-digit' });
+            bannerMeta.textContent = `மாணவர்: ${studentUser} (${studentName}) | அலகுகள்: ${unitLabel} | நேரம்: ${saveTime}`;
+
+            // Render detailed Review
+            renderReviewList();
+        }
+
+        function renderReviewList() {
+            const container = document.getElementById('review-list-container');
+            container.innerHTML = '';
+            const letters = ['A', 'B', 'C', 'D'];
+
+            activeQuestions.forEach((q, idx) => {
+                const userAns = userAnswers[q.id];
+                const isCorrect = userAns === q.a;
+                const isSkipped = userAns === undefined;
+
+                let cardState = isCorrect ? "is-correct" : (isSkipped ? "" : "is-wrong");
+                let badgeText = isCorrect ? "சரியானது" : (isSkipped ? "விடையளிக்கப்படவில்லை" : "தவறானது");
+                let tagState = isCorrect ? "is-correct" : (isSkipped ? "is-skipped" : "is-wrong");
+
+                const card = document.createElement('div');
+                card.className = `card review-card ${cardState}`;
+
+                card.innerHTML = `
+                    <div class="review-meta">
+                        <div class="review-meta-left">
+                            <span class="review-num">வினா ${idx + 1}</span>
+                            <span class="tag ${tagState}">${badgeText}</span>
+                        </div>
+                        <span class="review-unit">${unitTitles[q.u]}</span>
+                    </div>
+
+                    <h4 class="review-q">${q.id}. ${q.q}</h4>
+
+                    <div class="review-options">
+                        ${q.o.map((optText, oIdx) => {
+                            let optState = "";
+                            if (oIdx === q.a) {
+                                optState = "is-correct";
+                            } else if (oIdx === userAns && !isCorrect) {
+                                optState = "is-wrong";
+                            }
+                            return `
+                                <div class="review-option ${optState}">
+                                    <span>(${letters[oIdx]}) ${optText}</span>
+                                    ${oIdx === q.a ? '<i class="fa-solid fa-circle-check"></i>' : ''}
+                                    ${oIdx === userAns && !isCorrect ? '<i class="fa-solid fa-circle-xmark"></i>' : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function restartCurrentQuiz() {
+            startQuiz();
+        }
+
+        function returnToLobby() {
+            clearInterval(timerInterval);
+            document.getElementById('header-stats').classList.add('hidden');
+            showLobbyView();
+        }
+
+        // --------------------------------------------------------------------
+        // Admin Dashboard Controllers & Tabs
+        // --------------------------------------------------------------------
+        async function showAdminView() {
+            if (!currentUser || currentUser.role !== 'admin') {
+                showView('auth-view');
+                return;
+            }
+            showView('admin-view');
+            switchAdminTab('overview');
+        }
+
+        async function switchAdminTab(tab) {
+            ['overview', 'results', 'matrix', 'students', 'cloud'].forEach(t => {
+                const btn = document.getElementById(`btn-adm-tab-${t}`);
+                const pane = document.getElementById(`pane-adm-${t}`);
+                if (btn && pane) {
+                    if (t === tab) {
+                        btn.classList.add('is-active');
+                        pane.classList.remove('hidden');
+                    } else {
+                        btn.classList.remove('is-active');
+                        pane.classList.add('hidden');
+                    }
+                }
+            });
+
+            if (tab === 'overview') await loadAdminOverview();
+            if (tab === 'results') await loadAdminResults();
+            if (tab === 'matrix') await loadConsolidatedMatrix();
+            if (tab === 'students') await loadStudentManagement();
+            if (tab === 'cloud') loadCloudSettings();
+        }
+
+        // 1. Overview Tab
+        async function loadAdminOverview() {
+            cachedStudents = await DataService.getAllStudents();
+            cachedResults = await DataService.getAllResults();
+
+            const totalStudents = cachedStudents.length;
+            const activeStudents = cachedStudents.filter(s => s.status === 'active').length;
+            const totalExams = cachedResults.length;
+
+            let avgScore = 0;
+            if (totalExams > 0) {
+                const sum = cachedResults.reduce((acc, r) => acc + (r.percentage || 0), 0);
+                avgScore = Math.round(sum / totalExams);
+            }
+
+            document.getElementById('metric-total-students').textContent = totalStudents;
+            document.getElementById('metric-active-students').textContent = activeStudents;
+            document.getElementById('metric-total-exams').textContent = totalExams;
+            document.getElementById('metric-avg-score').textContent = `${avgScore}%`;
+
+            document.getElementById('badge-results-count').textContent = totalExams;
+            document.getElementById('badge-students-count').textContent = totalStudents;
+
+            // Unit-wise performance calculations
+            const container = document.getElementById('unit-performance-container');
+            container.innerHTML = '';
+
+            for (let u = 1; u <= 6; u++) {
+                const uResults = cachedResults.filter(r => r.unitId == u);
+                const count = uResults.length;
+                let unitAvg = 0;
+                if (count > 0) {
+                    unitAvg = Math.round(uResults.reduce((acc, r) => acc + r.percentage, 0) / count);
+                }
+
+                const card = document.createElement('div');
+                card.className = 'unit-perf-card';
+                card.innerHTML = `
+                    <div class="unit-perf-head">
+                        <span class="unit-perf-title">${unitTitles[u]}</span>
+                        <span class="unit-perf-score">${unitAvg}% (எழுதியோர்: ${count})</span>
+                    </div>
+                    <div class="unit-bar-track">
+                        <div class="unit-bar-fill" style="width: ${unitAvg}%;"></div>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        // 2. Results Tab
+        async function loadAdminResults() {
+            cachedResults = await DataService.getAllResults();
+            filterAdminResults();
+        }
+
+        function filterAdminResults() {
+            const query = (document.getElementById('search-result-input').value || '').trim().toLowerCase();
+            const unitFilter = document.getElementById('filter-result-unit').value;
+            const statusFilter = document.getElementById('filter-result-status').value;
+
+            const filtered = cachedResults.filter(r => {
+                const matchQuery = !query ||
+                    (r.studentUsername && r.studentUsername.toLowerCase().includes(query)) ||
+                    (r.studentName && r.studentName.toLowerCase().includes(query));
+
+                const matchUnit = unitFilter === 'all' || r.unitId == unitFilter;
+                const matchStatus = statusFilter === 'all' || r.status === statusFilter;
+
+                return matchQuery && matchUnit && matchStatus;
+            });
+
+            renderResultsTable(filtered);
+        }
+
+        function renderResultsTable(results) {
+            const tbody = document.getElementById('admin-results-tbody');
+            tbody.innerHTML = '';
+
+            if (results.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--slate-400); padding: 2rem;">முடிவுகள் எதுவும் காணப்படவில்லை (No records found).</td></tr>';
+                return;
+            }
+
+            results.forEach((r, idx) => {
+                const tr = document.createElement('tr');
+                const isPass = (r.percentage >= 50);
+                const statusPill = isPass ?
+                    '<span class="status-pill is-pass"><i class="fa-solid fa-check"></i> தேர்ச்சி</span>' :
+                    '<span class="status-pill is-fail"><i class="fa-solid fa-xmark"></i> மீண்டும் தேவை</span>';
+
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td><strong>${r.studentUsername}</strong></td>
+                    <td>${r.studentName || '-'}</td>
+                    <td>${r.unit || '-'}</td>
+                    <td>${r.mode === 'exam' ? 'நேரத் தேர்வு' : 'பயிற்சி'}</td>
+                    <td><strong>${r.marks}/${r.total}</strong></td>
+                    <td><strong style="color: ${isPass ? 'var(--green-600)' : 'var(--red-600)'};">${r.percentage}%</strong></td>
+                    <td>${statusPill}</td>
+                    <td style="font-size: 0.75rem; color: var(--slate-500);">${r.examDate || '-'}</td>
+                    <td style="text-align: center;">
+                        <button onclick="deleteResultAdmin('${r.id}')" class="icon-btn-action is-delete" title="அழி"><i class="fa-regular fa-trash-can"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function deleteResultAdmin(resultId) {
+            if (confirm("இந்தத் தேர்வு முடிவை நிரந்தரமாக நீக்க விரும்புகிறீர்களா?")) {
+                await DataService.deleteResult(resultId);
+                await loadAdminResults();
+            }
+        }
+
+        // 3. Consolidated 6-Unit Marksheet Matrix Tab
+        async function loadConsolidatedMatrix() {
+            const matrix = await DataService.getConsolidatedMarksheet();
+            const tbody = document.getElementById('admin-matrix-tbody');
+            tbody.innerHTML = '';
+
+            if (matrix.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 2rem; color: var(--slate-400);">மாணவர் விபரங்கள் ஏற்றப்படவில்லை.</td></tr>';
+                return;
+            }
+
+            matrix.forEach((st, idx) => {
+                const tr = document.createElement('tr');
+
+                // Render Unit 1 to 6 badges
+                let unitCells = '';
+                for (let u = 1; u <= 6; u++) {
+                    const score = st.units[u];
+                    if (score === null) {
+                        unitCells += '<td style="text-align: center;"><span class="matrix-mark is-empty">-</span></td>';
+                    } else if (score >= 50) {
+                        unitCells += `<td style="text-align: center;"><span class="matrix-mark is-high">${score}%</span></td>`;
+                    } else {
+                        unitCells += `<td style="text-align: center;"><span class="matrix-mark is-low">${score}%</span></td>`;
+                    }
+                }
+
+                const avgBadge = st.overallAvg !== null ?
+                    `<strong style="color: ${st.overallAvg >= 50 ? 'var(--green-700)' : 'var(--red-600)'}; font-size: 0.88rem;">${st.overallAvg}%</strong>` :
+                    '<span style="color: var(--slate-400);">-</span>';
+
+                tr.innerHTML = `
+                    <td>${st.rollNo}</td>
+                    <td><strong>${st.username}</strong></td>
+                    <td>${st.name}</td>
+                    ${unitCells}
+                    <td style="text-align: center;">${avgBadge}</td>
+                    <td><span style="font-size: 0.75rem; font-weight: 600;">${st.performance}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 4. Student Management Tab (100 Accounts)
+        async function loadStudentManagement() {
+            cachedStudents = await DataService.getAllStudents();
+            filterAdminStudents();
+        }
+
+        function filterAdminStudents() {
+            const query = (document.getElementById('search-student-input').value || '').trim().toLowerCase();
+            const statusFilter = document.getElementById('filter-student-status').value;
+
+            const filtered = cachedStudents.filter(s => {
+                const matchQuery = !query ||
+                    (s.username && s.username.toLowerCase().includes(query)) ||
+                    (s.name && s.name.toLowerCase().includes(query)) ||
+                    (s.rollNo && s.rollNo.toString().includes(query));
+
+                const matchStatus = statusFilter === 'all' || s.status === statusFilter;
+                return matchQuery && matchStatus;
+            });
+
+            renderStudentsTable(filtered);
+        }
+
+        function renderStudentsTable(students) {
+            const tbody = document.getElementById('admin-students-tbody');
+            tbody.innerHTML = '';
+
+            if (students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--slate-400);">மாணவர்கள் காணப்படவில்லை.</td></tr>';
+                return;
+            }
+
+            students.forEach(s => {
+                const tr = document.createElement('tr');
+                const isActive = s.status === 'active';
+                const statusBadge = isActive ?
+                    '<span class="status-pill is-active"><i class="fa-solid fa-circle-check"></i> செயலில்</span>' :
+                    '<span class="status-pill is-inactive"><i class="fa-solid fa-ban"></i> முடக்கப்பட்டது</span>';
+
+                tr.innerHTML = `
+                    <td>${s.rollNo}</td>
+                    <td><strong>${s.username}</strong></td>
+                    <td>${s.name}</td>
+                    <td>${statusBadge}</td>
+                    <td style="font-size: 0.75rem; color: var(--slate-500);">${s.lastLogin ? new Date(s.lastLogin).toLocaleString('ta-LK') : 'இன்னும் உள்நுழையவில்லை'}</td>
+                    <td style="text-align: center;">
+                        <div class="row-actions" style="justify-content: center;">
+                            <button onclick="openEditStudentModal('${s.username}')" class="icon-btn-action" title="பெயரை மாற்று"><i class="fa-regular fa-pen-to-square"></i></button>
+                            <button onclick="openResetPasswordModal('${s.username}', '${s.name}')" class="icon-btn-action" title="கடவுச்சொல்லை மாற்று"><i class="fa-solid fa-key"></i></button>
+                            <button onclick="toggleStudentStatusAdmin('${s.username}', '${s.status}')" class="icon-btn-action" title="${isActive ? 'முடக்கு' : 'செயலாக்கு'}">
+                                <i class="fa-solid ${isActive ? 'fa-user-slash' : 'fa-user-check'}" style="color: ${isActive ? 'var(--red-600)' : 'var(--green-600)'};"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function toggleStudentStatusAdmin(username, currentStatus) {
+            const newStatus = (currentStatus === 'active') ? 'inactive' : 'active';
+            await DataService.toggleStudentStatus(username, newStatus);
+            await loadStudentManagement();
+        }
+
+        async function seed100AccountsAdmin() {
+            if (confirm("Cloud Firestore இல் அனைத்து 100 மாணவர் கணக்குகளையும் தானாக உருவாக்க விரும்புகிறீர்களா?")) {
+                const btn = event.currentTarget;
+                const orig = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>உருவாக்கப்படுகிறது...</span>';
+
+                await DataService.seed100StudentsToCloud((current, total, msg) => {
+                    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>${current}/${total}...</span>`;
+                });
+
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                alert("அனைத்து 100 மாணவர் கணக்குகளும் Cloud இல் வெற்றிகரமாகப் பதியப்பட்டன!");
+                await loadStudentManagement();
+            }
+        }
+
+        // --------------------------------------------------------------------
+        // Modals Management
+        // --------------------------------------------------------------------
+        function openAddStudentModal() {
+            document.getElementById('add-std-roll').value = (cachedStudents.length + 1);
+            document.getElementById('add-std-user').value = 'std' + (cachedStudents.length + 1).toString().padStart(3, '0');
+            document.getElementById('add-std-name').value = 'மாணவர் ' + (cachedStudents.length + 1).toString().padStart(3, '0');
+            document.getElementById('add-std-pass').value = 'ict@' + document.getElementById('add-std-user').value;
+            document.getElementById('modal-add-student').classList.remove('hidden');
+        }
+
+        function closeAddStudentModal() {
+            document.getElementById('modal-add-student').classList.add('hidden');
+        }
+
+        async function submitAddStudent(e) {
+            e.preventDefault();
+            const roll = document.getElementById('add-std-roll').value;
+            const user = document.getElementById('add-std-user').value;
+            const name = document.getElementById('add-std-name').value;
+            const pass = document.getElementById('add-std-pass').value;
+
+            await DataService.saveStudent({
+                rollNo: parseInt(roll),
+                username: user,
+                name: name,
+                newPassword: pass,
+                status: 'active'
+            });
+
+            closeAddStudentModal();
+            await loadStudentManagement();
+        }
+
+        function openEditStudentModal(username) {
+            const st = cachedStudents.find(s => s.username === username);
+            if (!st) return;
+
+            document.getElementById('edit-std-username').value = st.username;
+            document.getElementById('edit-std-user-display').value = st.username;
+            document.getElementById('edit-std-roll').value = st.rollNo;
+            document.getElementById('edit-std-name').value = st.name;
+            document.getElementById('modal-edit-student').classList.remove('hidden');
+        }
+
+        function closeEditStudentModal() {
+            document.getElementById('modal-edit-student').classList.add('hidden');
+        }
+
+        async function submitEditStudent(e) {
+            e.preventDefault();
+            const user = document.getElementById('edit-std-username').value;
+            const roll = document.getElementById('edit-std-roll').value;
+            const name = document.getElementById('edit-std-name').value;
+
+            await DataService.saveStudent({
+                username: user,
+                rollNo: parseInt(roll),
+                name: name
+            });
+
+            closeEditStudentModal();
+            await loadStudentManagement();
+        }
+
+        function openResetPasswordModal(username, name) {
+            document.getElementById('reset-std-username').value = username;
+            document.getElementById('reset-std-name-display').textContent = `${username} (${name || ''})`;
+            document.getElementById('reset-std-newpass').value = '';
+            document.getElementById('modal-reset-password').classList.remove('hidden');
+        }
+
+        function closeResetPasswordModal() {
+            document.getElementById('modal-reset-password').classList.add('hidden');
+        }
+
+        async function submitResetPassword(e) {
+            e.preventDefault();
+            const user = document.getElementById('reset-std-username').value;
+            const newpass = document.getElementById('reset-std-newpass').value;
+
+            await DataService.resetStudentPassword(user, newpass);
+            alert(`${user} மாணவரின் கடவுச்சொல் வெற்றிகரமாக மாற்றப்பட்டது!`);
+            closeResetPasswordModal();
+        }
+
+        // --------------------------------------------------------------------
+        // Excel Export Controllers (SheetJS / XLSX)
+        // --------------------------------------------------------------------
+        function exportResultsToExcel() {
+            if (!cachedResults || cachedResults.length === 0) {
+                alert("ஏற்றுமதி செய்வதற்குத் தேர்வு முடிவுகள் எதுவும் இல்லை.");
+                return;
+            }
+
+            const rows = cachedResults.map((r, i) => ({
+                "வரிசை எண் (No)": i + 1,
+                "மாணவர் ID (Username)": r.studentUsername,
+                "மாணவர் பெயர் (Name)": r.studentName,
+                "அலகு (Unit)": r.unit,
+                "தேர்வு முறை (Mode)": r.mode === 'exam' ? 'Exam Mode' : 'Practice Mode',
+                "பெற்ற புள்ளிகள் (Marks)": r.marks,
+                "மொத்த வினாக்கள் (Total)": r.total,
+                "சதவீதம் (Percentage %)": r.percentage,
+                "முடிவு நிலை (Status)": r.status,
+                "எடுத்துக்கொண்ட நேரம் (Time)": r.timeSpent,
+                "தேதி & நேரம் (Date)": r.examDate
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Exam Results");
+            XLSX.writeFile(workbook, `Grade6_ICT_Exam_Results_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
+        async function exportMatrixToExcel() {
+            const matrix = await DataService.getConsolidatedMarksheet();
+            if (!matrix || matrix.length === 0) {
+                alert("மதிப்பெண் பட்டியல் விபரங்கள் கிடைக்கவில்லை.");
+                return;
+            }
+
+            const rows = matrix.map(st => ({
+                "வ.எண் (Roll)": st.rollNo,
+                "பயனர் பெயர் (Username)": st.username,
+                "மாணவர் பெயர் (Name)": st.name,
+                "அலகு 1 (%)": st.units[1] !== null ? st.units[1] : '-',
+                "அலகு 2 (%)": st.units[2] !== null ? st.units[2] : '-',
+                "அலகு 3 (%)": st.units[3] !== null ? st.units[3] : '-',
+                "அலகு 4 (%)": st.units[4] !== null ? st.units[4] : '-',
+                "அலகு 5 (%)": st.units[5] !== null ? st.units[5] : '-',
+                "அலகு 6 (%)": st.units[6] !== null ? st.units[6] : '-',
+                "சராசரி சதவீதம் (Avg %)": st.overallAvg !== null ? st.overallAvg : '-',
+                "செயல்திறன் (Grade/Rank)": st.performance
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "6-Unit Consolidated");
+            XLSX.writeFile(workbook, `Grade6_ICT_6Unit_Marksheet_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
+        function exportStudentAccountsToExcel() {
+            if (!cachedStudents || cachedStudents.length === 0) {
+                alert("மாணவர் கணக்குகள் எதுவும் கிடைக்கவில்லை.");
+                return;
+            }
+
+            const rows = cachedStudents.map(st => ({
+                "வரிசை எண் (Roll)": st.rollNo,
+                "பயனர் பெயர் (Username)": st.username,
+                "மாணவர் பெயர் (Name)": st.name,
+                "இயல்பு கடவுச்சொல் (Default Pass)": 'ict@' + st.username,
+                "கணக்கு நிலை (Status)": st.status === 'active' ? 'Active' : 'Inactive',
+                "கடைசி உள்நுழைவு (Last Login)": st.lastLogin || 'Never'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "100 Students");
+            XLSX.writeFile(workbook, `Grade6_ICT_100_Student_Accounts.xlsx`);
+        }
+
+        // --------------------------------------------------------------------
+        // Firebase Cloud Settings Controllers
+        // --------------------------------------------------------------------
+        function loadCloudSettings() {
+            const status = DataService.getCloudStatus();
+            const badge = document.getElementById('cloud-connection-badge');
+            const projectText = document.getElementById('cloud-project-text');
+
+            if (status.connected) {
+                badge.className = 'status-pill is-active';
+                badge.textContent = 'Cloud Connected (Live)';
+                projectText.textContent = `திட்ட ID: ${status.projectId} | Auth: ${status.authDomain}`;
+            } else {
+                badge.className = 'status-pill is-inactive';
+                badge.textContent = 'Local Store (Not Connected)';
+                projectText.textContent = 'இணைப்பு நிலுவையில் உள்ளது. உங்கள் Firebase Project API Key ஐ கீழே உள்ளிடவும்.';
+            }
+
+            const cfg = getActiveFirebaseConfig();
+            if (cfg && cfg.apiKey !== 'YOUR_API_KEY') {
+                document.getElementById('cfg-api-key').value = cfg.apiKey || '';
+                document.getElementById('cfg-project-id').value = cfg.projectId || '';
+                document.getElementById('cfg-auth-domain').value = cfg.authDomain || '';
+            }
+        }
+
+        function saveCustomFirebaseConfig(e) {
+            e.preventDefault();
+            const apiKey = document.getElementById('cfg-api-key').value.trim();
+            const projectId = document.getElementById('cfg-project-id').value.trim();
+            const authDomain = document.getElementById('cfg-auth-domain').value.trim();
+
+            if (!apiKey || !projectId) {
+                alert("API Key மற்றும் Project ID கட்டாயமாகும்.");
+                return;
+            }
+
+            const cfg = {
+                apiKey: apiKey,
+                authDomain: authDomain || `${projectId}.firebaseapp.com`,
+                projectId: projectId,
+                storageBucket: `${projectId}.appspot.com`,
+                messagingSenderId: "",
+                appId: ""
+            };
+
+            localStorage.setItem('ict_g6_custom_firebase_config', JSON.stringify(cfg));
+            alert("Firebase அமைப்புகள் சேமிக்கப்பட்டன. பக்கம் மீண்டும் ஏற்றப்படுகிறது.");
+            window.location.reload();
+        }
+
+        function clearCustomFirebaseConfig() {
+            localStorage.removeItem('ict_g6_custom_firebase_config');
+            alert("இயல்புநிலைக்கு மாற்றப்பட்டது.");
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Students Collection
+    match /students/{username} {
+      // Students and Admin can read student profiles for login & verification
+      allow read: if true;
+      // Admin can create, edit, activate/deactivate, and reset student accounts
+      allow write: if true; 
+    }
+    
+    // Admins Collection
+    match /admins/{adminId} {
+      allow read, write: if true;
+    }
+    
+    // Exam Results Collection
+    match /exam_results/{resultId} {
+      // Students can submit results; Admin can view and manage all results
+      allow read, create: if true;
+      allow update, delete: if true;
+    }
+  }
+}
